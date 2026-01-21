@@ -1,19 +1,6 @@
 # Plan detail membuat MCP ActiveMQ
 
-**Created:** 1/22/2026 1:27:38  
-**Updated:** 1/22/2026 1:28:29  
-**Exported:** 1/22/2026 1:37:12  
-**Link:** [https://claude.ai/chat/f228c168-e38d-450f-88a4-2d495060feb7](https://claude.ai/chat/f228c168-e38d-450f-88a4-2d495060feb7)  
-
-## Prompt:
-1/22/2026, 1:27:39 AM
-
-Berikan plan detail membuat mcp activemq
-
-
-
-## Response:
-1/22/2026, 1:28:29 AM
+Plan ini dibuat dengan bahasa Indonesia. Tetapi ketika implement ke code, wajib menggunakan bahasa Inggris.
 
 ````plaintext
 Thought process: Merancang arsitektur MCP server untuk integrasi ActiveMQ.
@@ -480,27 +467,3 @@ npm run build
 # Test manual dengan MCP Inspector
 npx @modelcontextprotocol/inspector node dist/index.js
 ```
-
----
-
-## 9. Timeline Estimasi
-
-| Fase | Durasi | Deliverable |
-|------|--------|-------------|
-| Setup & Scaffolding | 1 hari | Project structure |
-| ActiveMQ Client | 2 hari | Connection & basic operations |
-| MCP Tools Implementation | 3 hari | All tools working |
-| Testing & Debugging | 2 hari | Stable release |
-| Documentation | 1 hari | README, examples |
-| **Total** | **~9 hari** | |
-
----
-
-Apakah Anda ingin saya buatkan implementasi lengkapnya dalam file yang bisa langsung digunakan?
-
-
-
-
-
----
-Powered by [Claude Exporter](https://www.ai-chat-exporter.net)
