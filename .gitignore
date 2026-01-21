@@ -6,3 +6,19 @@ opencode.json
 .osgrep
 .claude
 .opencode
+
+# bv (beads viewer) local config and caches
+.bv/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,31 @@
+{
+  "name": "activemq-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Apache ActiveMQ integration",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "activemq",
+    "messaging"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "axios": "^1.7.9",
+    "stompit": "^1.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/stompit": "^0.26.6",
+    "typescript": "^5.7.3"
+  }
+}
