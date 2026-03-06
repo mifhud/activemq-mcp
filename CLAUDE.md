@@ -37,9 +37,10 @@ npx @modelcontextprotocol/inspector node dist/index.js
 
 The server connects to ActiveMQ using environment variables:
 - `ACTIVEMQ_HOST`: Broker hostname (default: localhost)
-- `ACTIVEMQ_PORT`: STOMP port (default: 61613)
+- `ACTIVEMQ_PORT`: Protocol port (default: 5672 for AMQP, 61613 for STOMP)
 - `ACTIVEMQ_USERNAME`: Admin username (default: admin)
 - `ACTIVEMQ_PASSWORD`: Admin password (default: admin)
+- `ACTIVEMQ_PROTOCOL`: Messaging protocol — `amqp` (default) or `stomp`
 
 REST API calls assume the Jolokia endpoint is on port 8161.
 
@@ -94,7 +95,8 @@ Add to `claude_desktop_config.json`:
       "args": ["/path/to/activemq-mcp/dist/index.js"],
       "env": {
         "ACTIVEMQ_HOST": "localhost",
-        "ACTIVEMQ_PORT": "61613",
+        "ACTIVEMQ_PROTOCOL": "amqp",
+        "ACTIVEMQ_PORT": "5672",
         "ACTIVEMQ_USERNAME": "admin",
         "ACTIVEMQ_PASSWORD": "admin"
       }

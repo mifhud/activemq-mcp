@@ -15,11 +15,14 @@ import { z } from 'zod';
 import { ActiveMQClient } from './activemq-client.js';
 
 // Environment configuration
+const protocol = (process.env.ACTIVEMQ_PROTOCOL || 'amqp') as 'amqp' | 'stomp';
+const defaultPort = protocol === 'stomp' ? '61613' : '5672';
 const config = {
   host: process.env.ACTIVEMQ_HOST || 'localhost',
-  port: parseInt(process.env.ACTIVEMQ_PORT || '61613', 10),
+  port: parseInt(process.env.ACTIVEMQ_PORT || defaultPort, 10),
   username: process.env.ACTIVEMQ_USERNAME || 'admin',
   password: process.env.ACTIVEMQ_PASSWORD || 'admin',
+  protocol,
 };
 
 // Initialize ActiveMQ client

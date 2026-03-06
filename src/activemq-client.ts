@@ -1,10 +1,22 @@
 /**
- * ActiveMQ Client wrapper for STOMP and REST API operations
+ * ActiveMQ Client wrapper for AMQP/STOMP and REST API operations
  */
 
-import * as stompit from 'stompit';
 import axios from 'axios';
+import rhea from 'rhea';
 import type { ActiveMQConfig, MessageHeaders, QueueMessage, QueueStats, QueueInfo } from './types.js';
+
+/**
+ * Convert STOMP-style destinations to AMQP addresses.
+ * /queue/foo -> foo
+ * /topic/foo -> topic://foo
+ * foo -> foo (pass through)
+ */
+function normalizeAmqpAddress(destination: string): string {
+  if (destination.startsWith('/queue/')) return destination.slice(7);
+  if (destination.startsWith('/topic/')) return `topic://${destination.slice(7)}`;
+  return destination;
+}
 
 export class ActiveMQClient {
   private config: ActiveMQConfig;
@@ -16,125 +28,262 @@ export class ActiveMQClient {
   }
 
   /**
-   * Send a message to a queue or topic using STOMP
+   * Send a message to a queue or topic
    */
   async sendMessage(
     destination: string,
     message: string,
     headers: MessageHeaders = {}
   ): Promise<void> {
+    if (this.config.protocol === 'stomp') {
+      return this.sendMessageStomp(destination, message, headers);
+    }
+    return this.sendMessageAmqp(destination, message, headers);
+  }
+
+  private async sendMessageAmqp(
+    destination: string,
+    message: string,
+    headers: MessageHeaders = {}
+  ): Promise<void> {
+    let destType: string;
+    let destName: string;
+    if (destination.startsWith('/topic/')) {
+      destType = 'Topic';
+      destName = destination.slice(7);
+    } else if (destination.startsWith('/queue/')) {
+      destType = 'Queue';
+      destName = destination.slice(7);
+    } else {
+      destType = 'Queue';
+      destName = destination;
+    }
+
+    const encodedName = encodeURIComponent(destName);
+    const mbean = `org.apache.activemq:type=Broker,brokerName=localhost,destinationType=${destType},destinationName=${encodedName}`;
+
+    const hasHeaders = Object.keys(headers).length > 0;
+    try {
+      if (hasHeaders) {
+        await axios.post(
+          this.jolokiaUrl,
+          {
+            type: 'exec',
+            mbean,
+            operation: 'sendTextMessage(java.util.Map,java.lang.String,java.lang.String,java.lang.String)',
+            arguments: [headers, message, this.config.username, this.config.password],
+          },
+          { auth: { username: this.config.username, password: this.config.password } }
+        );
+      } else {
+        await axios.post(
+          this.jolokiaUrl,
+          {
+            type: 'exec',
+            mbean,
+            operation: 'sendTextMessage(java.lang.String)',
+            arguments: [message],
+          },
+          { auth: { username: this.config.username, password: this.config.password } }
+        );
+      }
+    } catch (error: any) {
+      throw new Error(`Failed to send message: ${error.message}`);
+    }
+  }
+
+  private async sendMessageStomp(
+    destination: string,
+    message: string,
+    headers: MessageHeaders = {}
+  ): Promise<void> {
+    // @ts-ignore - stompit is an optional dependency for STOMP protocol support
+    const stompit = await import('stompit');
     return new Promise((resolve, reject) => {
-      const connectOptions = {
-        host: this.config.host,
-        port: this.config.port,
-        connectHeaders: {
-          host: '/',
-          login: this.config.username,
-          passcode: this.config.password,
+      stompit.connect(
+        {
+          host: this.config.host,
+          port: this.config.port,
+          connectHeaders: {
+            host: '/',
+            login: this.config.username,
+            passcode: this.config.password,
+          },
         },
-      };
-
-      stompit.connect(connectOptions, (error, client) => {
-        if (error) {
-          reject(new Error(`STOMP connection error: ${error.message}`));
-          return;
+        (error: Error | null, client: any) => {
+          if (error) {
+            reject(new Error(`STOMP connection error: ${error.message}`));
+            return;
+          }
+          const frame = client.send({ destination, ...headers });
+          frame.write(message);
+          frame.end();
+          client.disconnect();
+          resolve();
         }
-
-        const sendHeaders = {
-          destination,
-          ...headers,
-        };
-
-        const frame = client.send(sendHeaders);
-        frame.write(message);
-        frame.end();
-
-        client.disconnect();
-        resolve();
-      });
+      );
     });
   }
 
   /**
-   * Receive a message from a queue or topic using STOMP
+   * Receive a message from a queue or topic
    */
   async receiveMessage(
     destination: string,
     timeout: number = 5000
   ): Promise<QueueMessage | null> {
+    if (this.config.protocol === 'stomp') {
+      return this.receiveMessageStomp(destination, timeout);
+    }
+    return this.receiveMessageAmqp(destination, timeout);
+  }
+
+  private async receiveMessageAmqp(
+    destination: string,
+    timeout: number = 5000
+  ): Promise<QueueMessage | null> {
     return new Promise((resolve, reject) => {
-      const connectOptions = {
+      const container = rhea.create_container();
+      let resolved = false;
+      let timeoutHandle: NodeJS.Timeout | null = null;
+
+      const conn = container.connect({
         host: this.config.host,
         port: this.config.port,
-        connectHeaders: {
-          host: '/',
-          login: this.config.username,
-          passcode: this.config.password,
-        },
-      };
+        username: this.config.username,
+        password: this.config.password,
+      });
 
-      stompit.connect(connectOptions, (error, client) => {
-        if (error) {
-          reject(new Error(`STOMP connection error: ${error.message}`));
-          return;
-        }
+      const address = normalizeAmqpAddress(destination);
 
-        const subscribeHeaders = {
-          destination,
-          ack: 'client-individual',
-        };
+      conn.once('connection_open', () => {
+        const receiver = conn.open_receiver({ source: { address } });
 
-        let timeoutHandle: NodeJS.Timeout | null = null;
-        let messageReceived = false;
-
-        // Set up timeout
         timeoutHandle = setTimeout(() => {
-          if (!messageReceived) {
-            client.disconnect();
+          if (!resolved) {
+            resolved = true;
+            receiver.close();
+            conn.close();
             resolve(null);
           }
         }, timeout);
 
-        client.subscribe(subscribeHeaders, (subscribeError, message) => {
-          if (subscribeError) {
-            if (timeoutHandle) clearTimeout(timeoutHandle);
-            client.disconnect();
-            reject(new Error(`STOMP subscribe error: ${subscribeError.message}`));
+        receiver.once('message', (ctx: any) => {
+          if (resolved) return;
+          resolved = true;
+          if (timeoutHandle) clearTimeout(timeoutHandle);
+
+          const msg = ctx.message;
+          const props = msg.application_properties || {};
+          const msgHeaders: MessageHeaders = {};
+          for (const key in props) {
+            msgHeaders[key] = String(props[key]);
+          }
+
+          const queueMessage: QueueMessage = {
+            messageId: msg.message_id ? String(msg.message_id) : '',
+            timestamp: msg.creation_time ? Number(msg.creation_time) : 0,
+            headers: msgHeaders,
+            body: typeof msg.body === 'string' ? msg.body : JSON.stringify(msg.body),
+          };
+
+          receiver.close();
+          conn.close();
+          resolve(queueMessage);
+        });
+      });
+
+      conn.once('disconnected', (ctx: any) => {
+        if (!resolved) {
+          resolved = true;
+          if (timeoutHandle) clearTimeout(timeoutHandle);
+          reject(new Error(`AMQP connection error: ${ctx.error?.message || 'disconnected'}`));
+        }
+      });
+
+      conn.once('error', (err: any) => {
+        if (!resolved) {
+          resolved = true;
+          if (timeoutHandle) clearTimeout(timeoutHandle);
+          reject(new Error(`AMQP error: ${err?.message || String(err)}`));
+        }
+      });
+    });
+  }
+
+  private async receiveMessageStomp(
+    destination: string,
+    timeout: number = 5000
+  ): Promise<QueueMessage | null> {
+    // @ts-ignore - stompit is an optional dependency for STOMP protocol support
+    const stompit = await import('stompit');
+    return new Promise((resolve, reject) => {
+      stompit.connect(
+        {
+          host: this.config.host,
+          port: this.config.port,
+          connectHeaders: {
+            host: '/',
+            login: this.config.username,
+            passcode: this.config.password,
+          },
+        },
+        (error: Error | null, client: any) => {
+          if (error) {
+            reject(new Error(`STOMP connection error: ${error.message}`));
             return;
           }
 
-          messageReceived = true;
-          if (timeoutHandle) clearTimeout(timeoutHandle);
+          let timeoutHandle: NodeJS.Timeout | null = null;
+          let messageReceived = false;
 
-          message.readString('utf-8', (readError, body) => {
-            if (readError) {
+          timeoutHandle = setTimeout(() => {
+            if (!messageReceived) {
               client.disconnect();
-              reject(new Error(`Failed to read message: ${readError.message}`));
+              resolve(null);
+            }
+          }, timeout);
+
+          client.subscribe({ destination, ack: 'client-individual' }, (subscribeError: Error | null, message: any) => {
+            if (subscribeError) {
+              if (timeoutHandle) clearTimeout(timeoutHandle);
+              client.disconnect();
+              reject(new Error(`STOMP subscribe error: ${subscribeError.message}`));
               return;
             }
 
-            const headers: MessageHeaders = {};
-            const rawHeaders = (message as any).headers || {};
-            for (const key in rawHeaders) {
-              if (rawHeaders.hasOwnProperty(key)) {
-                headers[key] = String(rawHeaders[key]);
+            messageReceived = true;
+            if (timeoutHandle) clearTimeout(timeoutHandle);
+
+            message.readString('utf-8', (readError: Error | null, body: string | null) => {
+              if (readError) {
+                client.disconnect();
+                reject(new Error(`Failed to read message: ${readError.message}`));
+                return;
               }
-            }
 
-            const queueMessage: QueueMessage = {
-              messageId: headers['message-id'] || '',
-              timestamp: parseInt(headers['timestamp'] || '0', 10),
-              headers,
-              body: body || '',
-            };
+              const headers: MessageHeaders = {};
+              const rawHeaders = message.headers || {};
+              for (const key in rawHeaders) {
+                if (Object.prototype.hasOwnProperty.call(rawHeaders, key)) {
+                  headers[key] = String(rawHeaders[key]);
+                }
+              }
 
-            // Acknowledge the message
-            client.ack(message);
-            client.disconnect();
-            resolve(queueMessage);
+              const queueMessage: QueueMessage = {
+                messageId: headers['message-id'] || '',
+                timestamp: parseInt(headers['timestamp'] || '0', 10),
+                headers,
+                body: body || '',
+              };
+
+              client.ack(message);
+              client.disconnect();
+              resolve(queueMessage);
+            });
           });
-        });
-      });
+        }
+      );
     });
   }
 

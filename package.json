@@ -20,12 +20,11 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "axios": "^1.7.9",
-    "stompit": "^1.0.0",
+    "rhea": "^3.0.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
-    "@types/stompit": "^0.26.6",
     "typescript": "^5.7.3"
   }
 }

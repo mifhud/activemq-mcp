@@ -7,6 +7,7 @@ export interface ActiveMQConfig {
   port: number;
   username: string;
   password: string;
+  protocol: 'amqp' | 'stomp';
 }
 
 export interface MessageHeaders {
