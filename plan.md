@@ -435,9 +435,30 @@ main().catch(console.error);
 
 ---
 
-## 7. Konfigurasi Claude Desktop
+## 7. Konfigurasi MCP Client
 
-Tambahkan ke `claude_desktop_config.json`:
+### Environment Variables
+
+| Variable | Default | Deskripsi |
+|----------|---------|-----------|
+| `ACTIVEMQ_HOST` | `localhost` | Hostname broker ActiveMQ |
+| `ACTIVEMQ_PORT` | tergantung protocol | Port koneksi broker |
+| `ACTIVEMQ_PROTOCOL` | `amqp` | `amqp`, `stomp`, atau `openwire` |
+| `ACTIVEMQ_WEB_PORT` | `8161` | Port web console / Jolokia |
+| `ACTIVEMQ_USERNAME` | `admin` | Username broker |
+| `ACTIVEMQ_PASSWORD` | `admin` | Password broker |
+
+**Default port per protocol:**
+
+| Protocol | Default Port |
+|----------|-------------|
+| `amqp` | 5672 |
+| `stomp` | 61613 |
+| `openwire` | 61616 |
+
+> Openwire tidak punya native library di Node.js, jadi pakai STOMP via `stompit` sebagai transport ke port OpenWire. Pastikan broker mengaktifkan AUTO transport atau STOMP connector di port 61616.
+
+### Claude Desktop
 
 ```json
 {
@@ -447,7 +468,30 @@ Tambahkan ke `claude_desktop_config.json`:
       "args": ["/path/to/activemq-mcp/dist/index.js"],
       "env": {
         "ACTIVEMQ_HOST": "localhost",
-        "ACTIVEMQ_PORT": "61613",
+        "ACTIVEMQ_PORT": "61616",
+        "ACTIVEMQ_PROTOCOL": "openwire",
+        "ACTIVEMQ_WEB_PORT": "8161",
+        "ACTIVEMQ_USERNAME": "admin",
+        "ACTIVEMQ_PASSWORD": "admin"
+      }
+    }
+  }
+}
+```
+
+### OpenCode / Codex
+
+```json
+{
+  "mcpServers": {
+    "activemq": {
+      "type": "local",
+      "command": ["node", "/path/to/activemq-mcp/dist/index.js"],
+      "environment": {
+        "ACTIVEMQ_HOST": "localhost",
+        "ACTIVEMQ_PROTOCOL": "openwire",
+        "ACTIVEMQ_PORT": "61616",
+        "ACTIVEMQ_WEB_PORT": "8161",
         "ACTIVEMQ_USERNAME": "admin",
         "ACTIVEMQ_PASSWORD": "admin"
       }

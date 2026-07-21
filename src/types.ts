@@ -5,9 +5,10 @@
 export interface ActiveMQConfig {
   host: string;
   port: number;
+  webPort: number;
   username: string;
   password: string;
-  protocol: 'amqp' | 'stomp';
+  protocol: 'amqp' | 'stomp' | 'openwire';
 }
 
 export interface MessageHeaders {

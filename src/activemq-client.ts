@@ -24,7 +24,7 @@ export class ActiveMQClient {
 
   constructor(config: ActiveMQConfig) {
     this.config = config;
-    this.jolokiaUrl = `http://${config.host}:8161/api/jolokia`;
+    this.jolokiaUrl = `http://${config.host}:${config.webPort}/api/jolokia`;
   }
 
   /**
@@ -35,7 +35,7 @@ export class ActiveMQClient {
     message: string,
     headers: MessageHeaders = {}
   ): Promise<void> {
-    if (this.config.protocol === 'stomp') {
+    if (this.config.protocol === 'stomp' || this.config.protocol === 'openwire') {
       return this.sendMessageStomp(destination, message, headers);
     }
     return this.sendMessageAmqp(destination, message, headers);
@@ -132,7 +132,7 @@ export class ActiveMQClient {
     destination: string,
     timeout: number = 5000
   ): Promise<QueueMessage | null> {
-    if (this.config.protocol === 'stomp') {
+    if (this.config.protocol === 'stomp' || this.config.protocol === 'openwire') {
       return this.receiveMessageStomp(destination, timeout);
     }
     return this.receiveMessageAmqp(destination, timeout);
