@@ -6,3 +6,5 @@ opencode.json
 .osgrep
 .claude
 .opencode
+dist/
+node_modules/

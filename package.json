@@ -1,0 +1,36 @@
+{
+  "name": "activemq-mcp",
+  "version": "1.0.0",
+  "description": "MCP server enabling Claude to interact with Apache ActiveMQ via STOMP and Jolokia REST API",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "activemq-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "stompit": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/stompit": "^0.26.6",
+    "tsx": "^4.20.0",
+    "typescript": "^5.7.3"
+  },
+  "keywords": [
+    "mcp",
+    "activemq",
+    "stomp",
+    "jolokia",
+    "modelcontextprotocol"
+  ],
+  "license": "MIT",
+  "author": ""
+}

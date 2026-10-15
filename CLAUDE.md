@@ -41,7 +41,9 @@ The server connects to ActiveMQ using environment variables:
 - `ACTIVEMQ_USERNAME`: Admin username (default: admin)
 - `ACTIVEMQ_PASSWORD`: Admin password (default: admin)
 
-REST API calls assume the Jolokia endpoint is on port 8161.
+- `ACTIVEMQ_REST_PORT` (or `ACTIVEMQ_JOLOKIA_PORT`): Jolokia REST port (default: 8161)
+- `ACTIVEMQ_BROKER_NAME`: Broker name in Jolokia object names (default: localhost)
+- `ACTIVEMQ_STOMP_TIMEOUT_MS` / `ACTIVEMQ_REST_TIMEOUT_MS`: per-call timeouts (default: 10000)
 
 ## Core Components
 
@@ -67,8 +69,7 @@ Each tool in `src/tools/` should:
 ## MCP Tools Exposed
 
 | Tool | Purpose | Key Parameters |
-|------|---------|----------------|
-| `send_message` | Send to queue/topic | destination, message, headers |
+| `receive_message` | Consume messages | destination, maxMessages, timeoutMs |
 | `browse_queue` | View messages non-destructively | queueName, maxMessages |
 | `list_queues` | List all queues | none |
 | `list_topics` | List all topics | none |
